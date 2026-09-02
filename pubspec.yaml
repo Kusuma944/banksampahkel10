@@ -36,6 +36,10 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
 
+  # State management (CPMK 3) — dipilih Provider karena ringan dan
+  # cukup untuk memisahkan business logic dari UI di skala prototype.
+  provider: ^6.1.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

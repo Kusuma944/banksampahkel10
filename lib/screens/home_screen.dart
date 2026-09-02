@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../core/theme/app_theme.dart';
 import '../models/waste_transaction.dart';
+import '../presentation/screens/setor_sampah_screen.dart';
 
 /// Home screen (Beranda) — kartu saldo, dampak lingkungan, aktivitas terakhir,
 /// dan bottom navigation 5 tab. Sesuai desain Figma.
@@ -244,7 +245,16 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedTab,
-        onDestinationSelected: (i) => setState(() => _selectedTab = i),
+        onDestinationSelected: (i) {
+          setState(() => _selectedTab = i);
+          if (i == 1) {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const SetorSampahScreen()),
+            );
+            // Kembalikan tab terpilih ke Beranda setelah user keluar dari SetorSampahScreen.
+            setState(() => _selectedTab = 0);
+          }
+        },
         backgroundColor: Colors.white,
         indicatorColor: AppTheme.primaryGreen.withOpacity(0.15),
         destinations: const [
