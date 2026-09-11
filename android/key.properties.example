@@ -1,0 +1,8 @@
+# Salin file ini jadi "key.properties" (tanpa .example), taruh di folder
+# android/ (sejajar file ini), lalu isi nilai sungguhan setelah generate
+# keystore sendiri (lihat RELEASE_GUIDE.md langkah 1).
+# "key.properties" TIDAK BOLEH di-commit ke Git — sudah masuk .gitignore.
+storePassword=isi_password_keystore_kamu
+keyPassword=isi_password_key_kamu
+keyAlias=upload
+storeFile=../upload-keystore.jks

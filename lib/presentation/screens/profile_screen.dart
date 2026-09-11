@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/local/secure_session_storage.dart';
 import '../../screens/login_screen.dart';
+import '../providers/payment_provider.dart';
+import 'subscription_screen.dart';
 
 /// Halaman Profil — mendemonstrasikan siklus penuh Secure Storage (CPMK 4):
 /// baca nama nasabah & status langganan (terenkripsi), toggle status
@@ -38,9 +41,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _toggleSubscription(bool value) async {
-    await _secureStorage.saveSubscriptionStatus(value);
-    if (!mounted) return;
-    setState(() => _isSubscribed = value);
+    if (!value) {
+      // Berhenti berlangganan tidak butuh pembayaran — langsung update.
+      await _secureStorage.saveSubscriptionStatus(false);
+      if (!mounted) return;
+      setState(() => _isSubscribed = false);
+      return;
+    }
+
+    // Mengaktifkan langganan HARUS lewat alur pembayaran (CPMK 5),
+    // bukan sekadar toggle switch langsung jadi true.
+    context.read<PaymentProvider>().reset();
+    final result = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
+    );
+
+    if (result == true) {
+      final subscribed = await _secureStorage.getSubscriptionStatus();
+      if (!mounted) return;
+      setState(() => _isSubscribed = subscribed);
+    }
   }
 
   Future<void> _logout() async {

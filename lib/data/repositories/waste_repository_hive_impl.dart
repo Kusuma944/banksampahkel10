@@ -8,9 +8,16 @@ import '../../domain/repositories/waste_repository.dart';
 ///
 /// Prinsip offline-first di sini: `setorSampah` SELALU menulis ke Hive
 /// (disk lokal) terlebih dahulu, apapun status koneksinya. Kalau saat
-/// itu online, langsung dicoba sinkron (simulasi network call); kalau
-/// offline, transaksi ditandai `synced: false` dan menunggu dipanggil
+/// itu online, langsung dicoba sinkron; kalau offline, transaksi
+/// ditandai `synced: false` dan menunggu dipanggil
 /// [syncPendingTransactions] saat koneksi kembali.
+///
+/// [remoteSync] (CPMK 5, opsional) — fungsi yang benar-benar mengupload
+/// transaksi ke cloud (Supabase). Kalau null (default), perilaku persis
+/// seperti CPMK 4: sinkron "disimulasikan" hanya menandai flag lokal.
+/// Kalau diisi dan upload GAGAL, transaksi tetap `synced: false` supaya
+/// dicoba lagi nanti — inilah error handling & network resilience yang
+/// diminta CPMK 5, menyatu dengan mekanisme offline-first CPMK 4.
 ///
 /// Box di-inject lewat constructor (bukan dibuka sendiri di sini) supaya
 /// class ini gampang di-unit-test dengan Hive box sungguhan di direktori
@@ -18,8 +25,9 @@ import '../../domain/repositories/waste_repository.dart';
 class WasteRepositoryHiveImpl implements WasteRepository {
   final Box<Map> _box;
   final ConnectivityService _connectivity;
+  final Future<void> Function(WasteTransaction transaction)? remoteSync;
 
-  WasteRepositoryHiveImpl(this._box, this._connectivity);
+  WasteRepositoryHiveImpl(this._box, this._connectivity, {this.remoteSync});
 
   @override
   Future<WasteTransaction> setorSampah({
@@ -32,13 +40,17 @@ class WasteRepositoryHiveImpl implements WasteRepository {
     // dan tidak butuh auto-increment terpisah.
     final key = tanggal.microsecondsSinceEpoch.toString();
 
-    // Coba sinkron langsung kalau kebetulan online saat setor (simulasi
-    // panggilan API). Kalau offline, transaksi tetap tersimpan lokal
-    // dan ditandai belum sinkron — inilah inti offline-first.
+    // Coba sinkron langsung kalau kebetulan online saat setor. Kalau
+    // offline, transaksi tetap tersimpan lokal dan ditandai belum
+    // sinkron — inilah inti offline-first.
     bool synced = false;
     if (await _connectivity.isOnline()) {
-      await Future.delayed(const Duration(milliseconds: 500)); // simulasi network call
-      synced = true;
+      synced = await _trySyncOne(WasteTransaction(
+        jenisSampah: jenis.namaTampilan,
+        beratKg: beratKg,
+        nilaiRupiah: nilai,
+        tanggal: tanggal,
+      ));
     }
 
     await _box.put(key, {
@@ -56,6 +68,24 @@ class WasteRepositoryHiveImpl implements WasteRepository {
       tanggal: tanggal,
       synced: synced,
     );
+  }
+
+  /// Mencoba upload SATU transaksi ke cloud lewat [remoteSync].
+  /// Mengembalikan `true` kalau berhasil (atau memang tidak ada
+  /// remoteSync yang di-set, supaya default tetap simulasi seperti
+  /// CPMK 4). Mengembalikan `false` kalau gagal — transaksi tetap
+  /// disimpan lokal, TIDAK ada exception yang bocor ke pemanggil.
+  Future<bool> _trySyncOne(WasteTransaction transaction) async {
+    if (remoteSync == null) {
+      await Future.delayed(const Duration(milliseconds: 500)); // simulasi network call
+      return true;
+    }
+    try {
+      await remoteSync!(transaction);
+      return true;
+    } catch (_) {
+      return false; // upload gagal (timeout/server error/dsb) — biarkan pending
+    }
   }
 
   @override
@@ -91,8 +121,12 @@ class WasteRepositoryHiveImpl implements WasteRepository {
     }).toList();
 
     for (final key in pendingKeys) {
-      await Future.delayed(const Duration(milliseconds: 300)); // simulasi upload satu per satu
       final raw = Map<String, dynamic>.from(_box.get(key)!);
+      final entity = _mapToEntity(raw);
+
+      final berhasil = await _trySyncOne(entity);
+      if (!berhasil) continue; // gagal upload kali ini, coba lagi di panggilan berikutnya
+
       raw['synced'] = true;
       await _box.put(key, raw);
     }

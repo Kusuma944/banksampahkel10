@@ -40,6 +40,18 @@ dependencies:
   # cukup untuk memisahkan business logic dari UI di skala prototype.
   provider: ^6.1.2
 
+  # Persistent data & offline-first (CPMK 4)
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  flutter_secure_storage: ^9.2.2
+  connectivity_plus: ^6.0.5
+
+  # Cloud backend, Auth & error resilience (CPMK 5)
+  # Supabase adalah paket HTTP murni Dart — aman ditambahkan tanpa
+  # perlu file konfigurasi native (beda dengan Firebase yang butuh
+  # google-services.json sebelum project bisa di-build sama sekali).
+  supabase_flutter: ^2.5.6
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -41,3 +41,10 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# CPMK 6: secrets & signing — JANGAN PERNAH commit file-file ini
+.env
+key.properties
+*.jks
+*.keystore
+android/app/upload-keystore.jks

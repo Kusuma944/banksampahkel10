@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
 import '../core/theme/app_theme.dart';
+import '../data/local/secure_session_storage.dart';
+import 'home_screen.dart';
 import 'onboarding_screen.dart';
 
 /// Splash screen EcoBank Sampah — gradient hijau, logo, tagline.
 /// Sesuai desain Figma: "Ubah Sampah Jadi Berharga".
+///
+/// CPMK 4: di sini splash mengecek apakah ada sesi login tersimpan
+/// (terenkripsi lewat SecureSessionStorage). Kalau ada, user langsung
+/// diarahkan ke Beranda tanpa perlu login ulang — bukti nyata bahwa
+/// kredensial sesi benar-benar persistent lintas restart aplikasi.
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -13,6 +20,7 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen> {
   double _opacity = 0.0;
+  final _secureStorage = SecureSessionStorage();
 
   @override
   void initState() {
@@ -22,13 +30,18 @@ class _SplashScreenState extends State<SplashScreen> {
       if (mounted) setState(() => _opacity = 1.0);
     });
 
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const OnboardingScreen()),
-        );
-      }
-    });
+    Future.delayed(const Duration(seconds: 2), _navigateNext);
+  }
+
+  Future<void> _navigateNext() async {
+    final hasSession = await _secureStorage.hasActiveSession();
+    if (!mounted) return;
+
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => hasSession ? const HomeScreen() : const OnboardingScreen(),
+      ),
+    );
   }
 
   @override

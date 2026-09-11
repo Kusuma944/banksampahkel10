@@ -6,11 +6,18 @@ class WasteTransaction {
   final int nilaiRupiah;
   final DateTime tanggal;
 
+  /// Status sinkronisasi ke server. `false` berarti transaksi ini dibuat
+  /// saat offline dan masih menunggu disinkron begitu koneksi kembali.
+  /// Default `true` supaya kode lama (yang belum peduli offline-first)
+  /// tetap kompatibel tanpa perlu diubah.
+  final bool synced;
+
   const WasteTransaction({
     required this.jenisSampah,
     required this.beratKg,
     required this.nilaiRupiah,
     required this.tanggal,
+    this.synced = true,
   });
 }
 
